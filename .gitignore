@@ -5,3 +5,4 @@
 /storage/sessions/*
 /uploads/*
 pass.txt
+composer.lock

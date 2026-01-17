@@ -1,8 +1,3 @@
-# README.md
-
-**Ubicación:** `README.md` (REEMPLAZAR el actual)
-
-```markdown
 # ISO 27001 Compliance Platform v2.0
 
 Plataforma de gestión de cumplimiento de seguridad de la información basada en ISO 27001:2022.
@@ -34,12 +29,11 @@ Plataforma de gestión de cumplimiento de seguridad de la información basada en
 - MySQL/MariaDB 10.11+
 - Nginx/Apache
 - Composer
-- Docker (opcional)
+- Docker (recomendado)
 
 ## Instalación
 
 ### Con Docker
-
 ```bash
 # Clonar repositorio
 git clone <repo-url>
@@ -48,36 +42,35 @@ cd iso-27001
 # Copiar .env
 cp .env.example .env
 
-# Editar .env y configurar APP_KEY
-# Generar: php -r "echo bin2hex(random_bytes(16));"
-
-# Instalar dependencias
-docker-compose exec php composer install
+# Generar APP_KEY
+sed -i "s/APP_KEY=/APP_KEY=$(php -r 'echo bin2hex(random_bytes(16));')/" .env
 
 # Levantar contenedores
-docker-compose up -d
+docker compose up -d
+
+# Instalar dependencias
+docker compose exec php composer install
+
+# Ejecutar migración
+docker compose exec php php database/migrations/001_initial_schema.php
 
 # Acceder
 http://localhost:8080
 ```
 
-### Sin Docker
-
+### Verificar Base de Datos
 ```bash
-# Instalar dependencias
-composer install
+# Ver tablas
+docker compose exec db mysql -u iso_user -piso_pass iso_platform -e "SHOW TABLES;"
 
-# Configurar .env
-cp .env.example .env
-
-# Configurar permisos
-chmod 775 storage/logs storage/cache storage/sessions public/uploads
-
-# Configurar virtual host apuntando a /public
+# Verificar datos
+docker compose exec db mysql -u iso_user -piso_pass iso_platform -e "
+SELECT 'Dominios' AS tabla, COUNT(*) AS total FROM controles_dominio
+UNION ALL SELECT 'Controles', COUNT(*) FROM controles
+UNION ALL SELECT 'Requerimientos', COUNT(*) FROM requerimientos_base;"
 ```
 
 ## Estructura
-
 ```
 iso_platform/
 ├── config/          # Configuración (app, database, security, etc)
@@ -85,6 +78,10 @@ iso_platform/
 │   ├── Core/        # Framework base (Router, Request, Database)
 │   ├── Middleware/  # CSRF, Auth, RateLimit, Tenant
 │   └── Services/    # Log, File, Cache
+├── database/        # Schema, seeds y migraciones
+│   ├── schema.sql
+│   ├── seeds/
+│   └── migrations/
 ├── public/          # Entry point
 ├── routes/          # Definición de rutas
 ├── storage/         # Logs, cache, sessions
@@ -101,12 +98,39 @@ iso_platform/
 - [x] Servicios base (Log, File, Cache)
 - [x] Entry point con error handling
 
+### Fase 2 - Base de Datos Normalizada ✓
+
+- [x] Schema 3FN con 12 tablas
+- [x] 4 dominios ISO 27001
+- [x] 93 controles Anexo A
+- [x] 7 requerimientos obligatorios
+- [x] Constraints e índices optimizados
+- [x] Scripts de migración
+
 ### Próximas Fases
 
-- [ ] Fase 2: Base de datos normalizada
 - [ ] Fase 3: Multi-tenancy
 - [ ] Fase 4: Autenticación
 - [ ] Fase 5-14: Módulos funcionales
+
+## Base de Datos
+
+**12 Tablas en 3FN:**
+- empresas, usuarios (multi-tenant)
+- controles_dominio, controles (93 controles ISO)
+- soa_entries (SOA por empresa)
+- gap_items, acciones (GAP analysis)
+- evidencias (documentos)
+- requerimientos_base, empresa_requerimientos, requerimientos_controles
+- audit_logs (auditoría completa)
+
+**Datos iniciales:**
+- 4 dominios
+- 93 controles
+- 7 requerimientos
+- 22 relaciones
+
+Ver documentación completa en `database/README.md`
 
 ## Seguridad Implementada
 
@@ -141,6 +165,3 @@ Proprietary
 ## Autor
 
 Anderson Leon
-```
-
-
