@@ -1,14 +1,35 @@
 {
-    "name": "root/html",
+    "name": "iso27001/compliance-platform",
+    "description": "ISO 27001 Compliance Management Platform",
+    "type": "project",
+    "license": "proprietary",
     "autoload": {
         "psr-4": {
-            "Root\\Html\\": "src/"
-        }
+            "App\\": "src/"
+        },
+        "files": [
+            "src/Core/helpers.php"
+        ]
     },
     "authors": [
         {
             "name": "Anderson Leon"
         }
     ],
-    "require": {}
+    "require": {
+        "php": "^8.3",
+        "vlucas/phpdotenv": "^5.6",
+        "ext-pdo": "*",
+        "ext-fileinfo": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
 }
