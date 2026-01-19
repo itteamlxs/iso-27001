@@ -22,7 +22,7 @@ class AuthController extends Controller
             'old' => Session::get('_old', [])
         ]);
 
-        return $this->layout('auth', $content, ['title' => 'Iniciar Sesión']);
+        echo $this->layout('auth', $content, ['title' => 'Iniciar Sesión']);
     }
 
     public function login(Request $request)
@@ -106,7 +106,7 @@ class AuthController extends Controller
             'old' => Session::get('_old', [])
         ]);
 
-        return $this->layout('auth', $content, ['title' => 'Registro']);
+        echo $this->layout('auth', $content, ['title' => 'Registro']);
     }
 
     public function register(Request $request)
