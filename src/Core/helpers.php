@@ -157,3 +157,20 @@ if (!function_exists('dd')) {
         exit;
     }
 }
+
+if (!function_exists('component')) {
+    function component(string $name, array $data = []): string {
+        extract($data);
+        ob_start();
+        
+        $path = __DIR__ . '/../Views/components/' . $name . '.php';
+        
+        if (!file_exists($path)) {
+            return "<!-- Component '{$name}' not found -->";
+        }
+        
+        include $path;
+        
+        return ob_get_clean();
+    }
+}

@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\Base\Controller;
 use App\Core\Request;
+use App\Core\Session;
 use App\Middleware\RateLimitMiddleware;
 use App\Services\LogService;
 
@@ -21,7 +22,7 @@ class AuthController extends Controller
             'old' => Session::get('_old', [])
         ]);
 
-        return $this->layout('auth', $content);
+        return $this->layout('auth', $content, ['title' => 'Iniciar Sesión']);
     }
 
     public function login(Request $request)
@@ -55,6 +56,44 @@ class AuthController extends Controller
         $this->redirect('/dashboard');
     }
 
+    public function checkEmail(Request $request)
+    {
+        $rateLimiter = new RateLimitMiddleware('login');
+        $rateLimiter->handle($request, function() {});
+
+        if (!$request->isJson()) {
+            return $this->error('Invalid request', 400);
+        }
+
+        $json = $request->json();
+        
+        if (!isset($json['email']) || empty($json['email'])) {
+            return $this->error('Email requerido', 422);
+        }
+
+        $email = filter_var($json['email'], FILTER_SANITIZE_EMAIL);
+        
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->error('Email inválido', 422);
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $exists = $db->fetch(
+            "SELECT id FROM usuarios WHERE email = ? AND estado = 'activo' LIMIT 1",
+            [$email]
+        );
+
+        LogService::info('Email check attempt', [
+            'email' => $email,
+            'exists' => (bool)$exists,
+            'ip' => $request->ip()
+        ]);
+
+        return $this->json([
+            'exists' => (bool)$exists
+        ]);
+    }
+
     public function showRegister(Request $request)
     {
         if ($this->isAuthenticated()) {
@@ -67,7 +106,7 @@ class AuthController extends Controller
             'old' => Session::get('_old', [])
         ]);
 
-        return $this->layout('auth', $content);
+        return $this->layout('auth', $content, ['title' => 'Registro']);
     }
 
     public function register(Request $request)

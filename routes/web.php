@@ -17,6 +17,9 @@ $router->post('/registro', 'AuthController@register', [CsrfMiddleware::class]);
 
 $router->get('/logout', 'AuthController@logout');
 
+// API pública
+$router->post('/api/check-email', 'AuthController@checkEmail', [CsrfMiddleware::class]);
+
 // Rutas protegidas
 $router->group([AuthMiddleware::class, TenantMiddleware::class], function($router) {
     
