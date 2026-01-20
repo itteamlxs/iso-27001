@@ -19,7 +19,7 @@ class AuthController extends Controller
 
         $content = $this->view('auth.login', [
             'errors' => $this->errors(),
-            'old' => Session::get('_old', [])
+            'old' => $this->old('email')
         ]);
 
         echo $this->layout('auth', $content, ['title' => 'Iniciar Sesión']);
@@ -43,7 +43,7 @@ class AuthController extends Controller
             }
 
             $this->flashError($result['error']);
-            Session::put('_old', ['email' => $data['email']]);
+            Session::flash('old', ['email' => $data['email']]);
             $this->redirect('/login');
             return;
         }
@@ -128,7 +128,7 @@ class AuthController extends Controller
             }
 
             Session::flash('errors', $result['errors']);
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->redirect('/registro');
             return;
         }

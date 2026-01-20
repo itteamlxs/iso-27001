@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\Base\Controller;
 use App\Core\Request;
+use App\Core\Session;
 use App\Repositories\ControlRepository;
 use App\Services\LogService;
 
@@ -130,7 +131,7 @@ class ControlController extends Controller
             }
 
             $this->flashError($validacionAplicabilidad['error']);
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->redirect('/controles/' . $controlId);
             return;
         }
@@ -146,7 +147,7 @@ class ControlController extends Controller
             }
 
             $this->flashError($validacionEstado['error']);
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->redirect('/controles/' . $controlId);
             return;
         }

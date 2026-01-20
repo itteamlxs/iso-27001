@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\Base\Controller;
 use App\Core\Request;
+use App\Core\Session;
 use App\Repositories\GapRepository;
 use App\Repositories\ControlRepository;
 use App\Services\LogService;
@@ -99,7 +100,7 @@ class GapController extends Controller
             }
 
             $this->flashError($validacion['error']);
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->back();
             return;
         }
@@ -112,7 +113,7 @@ class GapController extends Controller
             }
 
             $this->flashError('Debe agregar al menos una acción');
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->back();
             return;
         }
@@ -139,7 +140,7 @@ class GapController extends Controller
             }
 
             $this->flashError('Error al crear GAP');
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->back();
         }
     }

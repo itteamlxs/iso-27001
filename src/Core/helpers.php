@@ -130,7 +130,10 @@ if (!function_exists('old')) {
 
 if (!function_exists('csrf_token')) {
     function csrf_token(): string {
-        return $_SESSION['_token'] ?? '';
+        if (!App\Core\Session::has('_token')) {
+            App\Core\Session::put('_token', generate_token(32));
+        }
+        return App\Core\Session::get('_token');
     }
 }
 
@@ -160,17 +163,24 @@ if (!function_exists('dd')) {
 
 if (!function_exists('component')) {
     function component(string $name, array $data = []): string {
-        extract($data);
-        ob_start();
+        $__componentName = $name;
+        $__componentPath = __DIR__ . '/../Views/components/' . $__componentName . '.php';
         
-        $path = __DIR__ . '/../Views/components/' . $name . '.php';
-        
-        if (!file_exists($path)) {
-            return "<!-- Component '{$name}' not found -->";
+        if (!file_exists($__componentPath)) {
+            return "<!-- Component '{$__componentName}' not found -->";
         }
         
-        include $path;
+        extract($data);
+        ob_start();
+        include $__componentPath;
         
         return ob_get_clean();
+    }
+}
+
+if (!function_exists('class_basename')) {
+    function class_basename($class): string {
+        $class = is_object($class) ? get_class($class) : $class;
+        return basename(str_replace('\\', '/', $class));
     }
 }

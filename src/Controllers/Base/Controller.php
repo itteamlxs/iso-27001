@@ -161,12 +161,13 @@ abstract class Controller
 
     protected function old(string $key, $default = '')
     {
-        return Session::get('_old')[$key] ?? $default;
+        $old = Session::get('_old', []);
+        return $old[$key] ?? $default;
     }
 
     protected function errors(): array
     {
-        return Session::get('_errors') ?? [];
+        return Session::getFlash('errors') ?? [];
     }
 
     protected function hasError(string $field): bool

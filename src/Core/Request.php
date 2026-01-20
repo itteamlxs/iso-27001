@@ -20,15 +20,14 @@ class Request
         $this->cookies = $_COOKIE;
     }
 
-    private function sanitize($data): array
+    private function sanitize(mixed $data): mixed
     {
         if (is_array($data)) {
             return array_map([$this, 'sanitize'], $data);
         }
         
         if (is_string($data)) {
-            $data = trim($data);
-            $data = stripslashes($data);
+            return trim(stripslashes($data));
         }
         
         return $data;

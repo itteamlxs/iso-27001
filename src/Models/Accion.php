@@ -1,19 +1,13 @@
 <?php
-
 namespace App\Models;
-
 use App\Models\Base\Model;
 use App\Models\Base\SoftDelete;
-
 class Accion extends Model
 {
     use SoftDelete;
-
+    
     protected string $table = 'acciones';
     protected bool $tenantScoped = false;
-    protected string $deletedAtColumn = 'estado_accion';
-    protected string $deletedValue = 'eliminada';
-    protected string $activeValue = 'activo';
     
     protected array $fillable = [
         'gap_id',
@@ -29,7 +23,15 @@ class Accion extends Model
         'id' => 'int',
         'gap_id' => 'int'
     ];
-
+    
+    public function __construct()
+    {
+        parent::__construct();
+        $this->deletedAtColumn = 'estado_accion';
+        $this->deletedValue = 'eliminada';
+        $this->activeValue = 'activo';
+    }
+    
     public function findByGap(int $gapId): array
     {
         return $this->db->fetchAll(
@@ -39,14 +41,12 @@ class Accion extends Model
             [$gapId, $this->activeValue]
         );
     }
-
     public function completar(int $id): bool
     {
         $result = $this->update($id, [
             'estado' => 'completada',
             'fecha_completado' => now()
         ]);
-
         if ($result) {
             $accion = $this->find($id);
             if ($accion) {
@@ -54,10 +54,8 @@ class Accion extends Model
                 $gapModel->verificarCierre($accion['gap_id']);
             }
         }
-
         return $result;
     }
-
     public function reabrir(int $id): bool
     {
         return $this->update($id, [
@@ -65,7 +63,6 @@ class Accion extends Model
             'fecha_completado' => null
         ]);
     }
-
     public function getVencidas(): array
     {
         $sql = "SELECT a.*, g.brecha, c.codigo as control_codigo
@@ -78,27 +75,21 @@ class Accion extends Model
                   AND a.fecha_compromiso < CURDATE()
                   AND g.estado_gap = 'activo'";
         $params = [$this->activeValue];
-
         if ($this->tenant->hasTenant()) {
             $sql .= " AND s.empresa_id = ?";
             $params[] = $this->tenant->requireTenant();
         }
-
         $sql .= " ORDER BY a.fecha_compromiso ASC";
-
         return $this->db->fetchAll($sql, $params);
     }
-
     public function getPendientes(): array
     {
         return $this->findAll(['estado' => 'pendiente'], 100);
     }
-
     public function getEnProgreso(): array
     {
         return $this->findAll(['estado' => 'en_progreso'], 100);
     }
-
     public function getEstadisticas(): array
     {
         $sql = "SELECT 
@@ -112,12 +103,10 @@ class Accion extends Model
                 INNER JOIN soa_entries s ON g.soa_id = s.id
                 WHERE a.estado_accion = ? AND g.estado_gap = 'activo'";
         $params = [$this->activeValue];
-
         if ($this->tenant->hasTenant()) {
             $sql .= " AND s.empresa_id = ?";
             $params[] = $this->tenant->requireTenant();
         }
-
         return $this->db->fetch($sql, $params) ?? [];
     }
 }

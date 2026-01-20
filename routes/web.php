@@ -45,7 +45,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function($route
     $router->get('/evidencias/subir', 'EvidenciaController@create');
     $router->post('/evidencias', 'EvidenciaController@store', [CsrfMiddleware::class]);
     $router->get('/evidencias/{id}/descargar', 'EvidenciaController@download');
-    $router->post('/evidencias/{id}/validar', 'EvidenciaController@validate', [CsrfMiddleware::class]);
+    $router->post('/evidencias/{id}/validar', 'EvidenciaController@validateEvidencia', [CsrfMiddleware::class]);
     
     // Requerimientos
     $router->get('/requerimientos', 'RequerimientoController@index');

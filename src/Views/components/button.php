@@ -1,38 +1,43 @@
 <?php
-$type = $type ?? 'button';
-$text = $text ?? 'Button';
-$variant = $variant ?? 'primary';
-$size = $size ?? 'md';
-$fullWidth = $fullWidth ?? false;
-$disabled = $disabled ?? false;
-$id = $id ?? '';
-$onclick = $onclick ?? '';
+/**
+ * Button Component
+ * @var string $type - button, submit, reset
+ * @var string $text - Texto del botón
+ * @var string $variant - primary, secondary, danger, success
+ * @var bool $fullWidth
+ * @var string $id
+ * @var array $attributes
+ */
 
-$variants = [
+$type = $type ?? 'button';
+$text = $text ?? 'Click';
+$variant = $variant ?? 'primary';
+$fullWidth = $fullWidth ?? false;
+$id = $id ?? '';
+$attributes = $attributes ?? [];
+
+$variantClasses = [
     'primary' => 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
     'secondary' => 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-    'success' => 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
     'danger' => 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    'outline' => 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-blue-500',
+    'success' => 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
 ];
 
-$sizes = [
-    'sm' => 'px-3 py-2 text-sm',
-    'md' => 'px-4 py-3 text-base',
-    'lg' => 'px-6 py-4 text-lg',
-];
+$classes = ($variantClasses[$variant] ?? $variantClasses['primary']) . ' px-4 py-3 text-base';
+$classes .= $fullWidth ? ' w-full' : '';
+$classes .= ' rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2';
 
-$variantClass = $variants[$variant] ?? $variants['primary'];
-$sizeClass = $sizes[$size] ?? $sizes['md'];
-$widthClass = $fullWidth ? 'w-full' : '';
+$attrString = '';
+foreach ($attributes as $key => $val) {
+    $attrString .= sprintf(' %s="%s"', htmlspecialchars($key), htmlspecialchars($val));
+}
 ?>
 
 <button 
-    type="<?= e($type) ?>"
-    <?= $id ? 'id="' . e($id) . '"' : '' ?>
-    <?= $onclick ? 'onclick="' . e($onclick) . '"' : '' ?>
-    <?= $disabled ? 'disabled' : '' ?>
-    class="<?= $variantClass ?> <?= $sizeClass ?> <?= $widthClass ?> rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 <?= $disabled ? 'opacity-50 cursor-not-allowed' : '' ?>"
+    type="<?= htmlspecialchars($type) ?>"
+    <?= $id ? 'id="' . htmlspecialchars($id) . '"' : '' ?>
+    class="<?= $classes ?>"
+    <?= $attrString ?>
 >
-    <?= e($text) ?>
+    <?= htmlspecialchars($text) ?>
 </button>

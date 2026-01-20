@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\Base\Controller;
 use App\Core\Request;
+use App\Core\Session;
 use App\Repositories\EvidenciaRepository;
 use App\Repositories\ControlRepository;
 use App\Middleware\RateLimitMiddleware;
@@ -103,7 +104,7 @@ class EvidenciaController extends Controller
             }
 
             $this->flashError('Debe seleccionar un archivo');
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->back();
             return;
         }
@@ -116,7 +117,7 @@ class EvidenciaController extends Controller
             }
 
             $this->flashError($validacion['error']);
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->back();
             return;
         }
@@ -151,7 +152,7 @@ class EvidenciaController extends Controller
             }
 
             $this->flashError($e->getMessage());
-            Session::put('_old', $request->all());
+            Session::flash('old', $request->all());
             $this->back();
         }
     }
@@ -187,14 +188,14 @@ class EvidenciaController extends Controller
         }
     }
 
-    public function validate(Request $request)
+    public function validateEvidencia(Request $request)
     {
         $this->requireAuth();
         $this->authorize('evidencias.validate');
 
         $evidenciaId = (int) $request->param('id');
 
-        $data = $this->validate($request, [
+        $data = parent::validate($request, [
             'aprobada' => 'required',
             'comentarios' => ''
         ]);
