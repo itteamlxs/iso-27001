@@ -10,6 +10,7 @@ class Usuario extends Model
     protected bool $tenantScoped = true;
     
     protected array $fillable = [
+        'empresa_id',
         'nombre',
         'email',
         'password_hash',
@@ -19,7 +20,6 @@ class Usuario extends Model
     
     protected array $guarded = [
         'id',
-        'empresa_id',
         'created_at',
         'updated_at'
     ];

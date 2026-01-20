@@ -114,12 +114,6 @@ class AuthController extends Controller
         $empresaData = $request->only(['nombre', 'ruc', 'sector', 'telefono', 'email_empresa', 'direccion']);
         $userData = $request->only(['nombre_usuario', 'email', 'password', 'password_confirmation']);
 
-        $empresaData['email'] = $empresaData['email_empresa'] ?? null;
-        unset($empresaData['email_empresa']);
-
-        $userData['nombre'] = $userData['nombre_usuario'];
-        unset($userData['nombre_usuario']);
-
         $result = $this->auth->register($empresaData, $userData);
 
         if (!$result['success']) {
@@ -134,19 +128,16 @@ class AuthController extends Controller
         }
 
         LogService::info('New company registered', [
-            'empresa_id' => $result['empresa_id'],
-            'user_id' => $result['user_id']
+            'empresa_id' => $result['user']['empresa_id'],
+            'user_id' => $result['user']['id']
         ]);
 
         if ($request->wantsJson()) {
-            return $this->success('Registro exitoso', [
-                'empresa_id' => $result['empresa_id'],
-                'user_id' => $result['user_id']
-            ]);
+            return $this->success('Registro exitoso', ['user' => $result['user']]);
         }
 
-        $this->flashSuccess('Cuenta creada exitosamente. Por favor inicie sesión.');
-        $this->redirect('/login');
+        $this->flashSuccess('Cuenta creada exitosamente. Bienvenido ' . $result['user']['nombre']);
+        $this->redirect('/dashboard');
     }
 
     public function logout(Request $request)

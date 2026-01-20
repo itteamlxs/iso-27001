@@ -48,9 +48,25 @@ class AuthService
     {
         $db = Database::getInstance();
         
+        // Mapear campos con nombres diferentes
+        if (isset($empresaData['email_empresa'])) {
+            $empresaData['email'] = $empresaData['email_empresa'];
+            unset($empresaData['email_empresa']);
+        }
+        
+        if (isset($userData['nombre_usuario'])) {
+            $userData['nombre'] = $userData['nombre_usuario'];
+            unset($userData['nombre_usuario']);
+        }
+        
         // Validar datos empresa
         $erroresEmpresa = $this->validateEmpresaData($empresaData);
         if (!empty($erroresEmpresa)) {
+            // Mapear errores de vuelta a nombres originales
+            if (isset($erroresEmpresa['email'])) {
+                $erroresEmpresa['email_empresa'] = $erroresEmpresa['email'];
+                unset($erroresEmpresa['email']);
+            }
             return [
                 'success' => false,
                 'errors' => $erroresEmpresa
@@ -60,6 +76,11 @@ class AuthService
         // Validar datos usuario
         $erroresUsuario = $this->validateUserData($userData);
         if (!empty($erroresUsuario)) {
+            // Mapear errores de vuelta a nombres originales
+            if (isset($erroresUsuario['nombre'])) {
+                $erroresUsuario['nombre_usuario'] = $erroresUsuario['nombre'];
+                unset($erroresUsuario['nombre']);
+            }
             return [
                 'success' => false,
                 'errors' => $erroresUsuario
