@@ -111,32 +111,63 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $empresaData = $request->only(['nombre', 'ruc', 'sector', 'telefono', 'email_empresa', 'direccion']);
-        $userData = $request->only(['nombre_usuario', 'email', 'password', 'password_confirmation']);
+        // Capturar todos los datos del formulario
+        $empresaData = [
+            'nombre' => $request->input('nombre'),
+            'ruc' => $request->input('ruc'),
+            'sector' => $request->input('sector'),
+            'telefono' => $request->input('telefono'),
+            'email' => $request->input('email_empresa'),
+            'direccion' => $request->input('direccion')
+        ];
 
+        $userData = [
+            'nombre' => $request->input('nombre_usuario'),
+            'email' => $request->input('email'),
+            'password' => $request->input('password'),
+            'password_confirmation' => $request->input('password_confirmation')
+        ];
+
+        // Llamar al servicio de registro
         $result = $this->auth->register($empresaData, $userData);
 
+        // Manejar errores
         if (!$result['success']) {
             if ($request->wantsJson()) {
                 return $this->error('Error en registro', 422, $result['errors']);
             }
 
+            // Guardar errores y datos antiguos en sesión
             Session::flash('errors', $result['errors']);
-            Session::flash('old', $request->all());
+            Session::flash('_old', $request->all());
+            
+            // Log del error
+            LogService::warning('Registration failed', [
+                'errors' => $result['errors'],
+                'ip' => $request->ip()
+            ]);
+
             $this->redirect('/registro');
             return;
         }
 
-        LogService::info('New company registered', [
-            'empresa_id' => $result['user']['empresa_id'],
-            'user_id' => $result['user']['id']
-        ]);
-
+        // Éxito
         if ($request->wantsJson()) {
-            return $this->success('Registro exitoso', ['user' => $result['user']]);
+            return $this->success('Registro exitoso', [
+                'empresa_id' => $result['empresa_id'],
+                'user_id' => $result['user_id']
+            ]);
         }
 
-        $this->flashSuccess('Cuenta creada exitosamente. Bienvenido ' . $result['user']['nombre']);
+        // Flash success y redirección
+        $this->flashSuccess('¡Cuenta creada exitosamente! Bienvenido a ISO 27001 Platform.');
+        
+        LogService::info('New company registered successfully', [
+            'empresa_id' => $result['empresa_id'],
+            'user_id' => $result['user_id'],
+            'ip' => $request->ip()
+        ]);
+
         $this->redirect('/dashboard');
     }
 

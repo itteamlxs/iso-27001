@@ -6,6 +6,7 @@ use App\Models\Usuario;
 use App\Models\Empresa;
 use App\Core\Session;
 use App\Core\Database;
+use App\Core\TenantContext;
 
 class AuthService
 {
@@ -47,26 +48,11 @@ class AuthService
     public function register(array $empresaData, array $userData): array
     {
         $db = Database::getInstance();
-        
-        // Mapear campos con nombres diferentes
-        if (isset($empresaData['email_empresa'])) {
-            $empresaData['email'] = $empresaData['email_empresa'];
-            unset($empresaData['email_empresa']);
-        }
-        
-        if (isset($userData['nombre_usuario'])) {
-            $userData['nombre'] = $userData['nombre_usuario'];
-            unset($userData['nombre_usuario']);
-        }
+        $tenant = TenantContext::getInstance();
         
         // Validar datos empresa
         $erroresEmpresa = $this->validateEmpresaData($empresaData);
         if (!empty($erroresEmpresa)) {
-            // Mapear errores de vuelta a nombres originales
-            if (isset($erroresEmpresa['email'])) {
-                $erroresEmpresa['email_empresa'] = $erroresEmpresa['email'];
-                unset($erroresEmpresa['email']);
-            }
             return [
                 'success' => false,
                 'errors' => $erroresEmpresa
@@ -76,20 +62,35 @@ class AuthService
         // Validar datos usuario
         $erroresUsuario = $this->validateUserData($userData);
         if (!empty($erroresUsuario)) {
-            // Mapear errores de vuelta a nombres originales
-            if (isset($erroresUsuario['nombre'])) {
-                $erroresUsuario['nombre_usuario'] = $erroresUsuario['nombre'];
-                unset($erroresUsuario['nombre']);
-            }
             return [
                 'success' => false,
                 'errors' => $erroresUsuario
             ];
         }
         
-        // Verificar email único
-        $usuarioModel = new Usuario();
-        if ($usuarioModel->emailExists($userData['email'])) {
+        // Verificar RUC único (sin tenant)
+        $empresaModel = new Empresa();
+        $existeRuc = $tenant->withoutTenant(function() use ($empresaModel, $empresaData) {
+            return $empresaModel->findByRuc($empresaData['ruc']);
+        });
+        
+        if ($existeRuc) {
+            return [
+                'success' => false,
+                'errors' => ['ruc' => ['El RUC ya está registrado']]
+            ];
+        }
+        
+        // Verificar email único global (sin tenant)
+        $emailExists = $tenant->withoutTenant(function() use ($db, $userData) {
+            $result = $db->fetch(
+                "SELECT id FROM usuarios WHERE email = ? LIMIT 1",
+                [$userData['email']]
+            );
+            return $result !== null;
+        });
+        
+        if ($emailExists) {
             return [
                 'success' => false,
                 'errors' => ['email' => ['El email ya está registrado']]
@@ -99,15 +100,18 @@ class AuthService
         try {
             $db->beginTransaction();
             
-            // Crear empresa
-            $empresaModel = new Empresa();
-            $empresaId = $empresaModel->create($empresaData);
+            // 1. Crear empresa
+            $empresaId = $tenant->withoutTenant(function() use ($empresaModel, $empresaData) {
+                return $empresaModel->create($empresaData);
+            });
             
             if (!$empresaId) {
                 throw new \Exception('Error al crear empresa');
             }
             
-            // Crear usuario
+            // 2. Crear usuario admin
+            $tenant->setTenant($empresaId);
+            
             $userData['empresa_id'] = $empresaId;
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_ARGON2ID);
             $userData['rol'] = 'admin_empresa';
@@ -116,13 +120,57 @@ class AuthService
             unset($userData['password']);
             unset($userData['password_confirmation']);
             
+            $usuarioModel = new Usuario();
             $userId = $usuarioModel->create($userData);
             
             if (!$userId) {
                 throw new \Exception('Error al crear usuario');
             }
             
+            // 3. Crear SOA entries (93 controles)
+            $controles = $tenant->withoutTenant(function() use ($db) {
+                return $db->fetchAll("SELECT id FROM controles ORDER BY id ASC");
+            });
+            
+            if (count($controles) !== 93) {
+                throw new \Exception('Faltan controles base en la BD. Ejecutar seeds.');
+            }
+            
+            $soaStmt = $db->getConnection()->prepare(
+                "INSERT INTO soa_entries (empresa_id, control_id, aplicable, estado, created_at, updated_at) 
+                 VALUES (?, ?, 1, 'no_implementado', NOW(), NOW())"
+            );
+            
+            foreach ($controles as $control) {
+                $soaStmt->execute([$empresaId, $control['id']]);
+            }
+            
+            // 4. Crear empresa_requerimientos (7 requerimientos)
+            $requerimientos = $tenant->withoutTenant(function() use ($db) {
+                return $db->fetchAll("SELECT id FROM requerimientos_base ORDER BY numero ASC");
+            });
+            
+            if (count($requerimientos) !== 7) {
+                throw new \Exception('Faltan requerimientos base en la BD. Ejecutar seeds.');
+            }
+            
+            $reqStmt = $db->getConnection()->prepare(
+                "INSERT INTO empresa_requerimientos (empresa_id, requerimiento_id, estado, created_at, updated_at) 
+                 VALUES (?, ?, 'pendiente', NOW(), NOW())"
+            );
+            
+            foreach ($requerimientos as $req) {
+                $reqStmt->execute([$empresaId, $req['id']]);
+            }
+            
             $db->commit();
+            
+            LogService::info('Company registered successfully', [
+                'empresa_id' => $empresaId,
+                'user_id' => $userId,
+                'soa_entries' => count($controles),
+                'requerimientos' => count($requerimientos)
+            ]);
             
             // Auto-login
             Session::put('user_id', $userId);
@@ -131,17 +179,18 @@ class AuthService
             
             return [
                 'success' => true,
-                'user' => [
-                    'id' => $userId,
-                    'nombre' => $userData['nombre'],
-                    'email' => $userData['email'],
-                    'rol' => 'admin_empresa',
-                    'empresa_id' => $empresaId
-                ]
+                'empresa_id' => $empresaId,
+                'user_id' => $userId
             ];
             
         } catch (\Exception $e) {
             $db->rollback();
+            
+            LogService::error('Company registration failed', [
+                'error' => $e->getMessage(),
+                'ruc' => $empresaData['ruc'] ?? null
+            ]);
+            
             return [
                 'success' => false,
                 'errors' => ['general' => [$e->getMessage()]]

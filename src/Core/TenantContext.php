@@ -82,11 +82,15 @@ class TenantContext
     public function withoutTenant(callable $callback)
     {
         $wasEnabled = $this->enabled;
+        $previousTenant = $this->tenantId;
+        
         $this->disable();
+        $this->tenantId = null;
 
         try {
             return $callback();
         } finally {
+            $this->tenantId = $previousTenant;
             if ($wasEnabled) {
                 $this->enable();
             }
