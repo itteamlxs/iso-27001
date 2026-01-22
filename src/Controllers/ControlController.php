@@ -94,7 +94,7 @@ class ControlController extends Controller
     public function evaluate(Request $request)
     {
         $this->requireAuth();
-        $this->authorize('controles.edit');
+        // $this->authorize('controles.edit');
 
         $controlId = (int) $request->param('id');
 
