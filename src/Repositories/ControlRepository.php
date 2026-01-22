@@ -34,7 +34,11 @@ class ControlRepository extends Repository
         $soa = $this->soaModel->findByControl($controlId);
 
         if (!$soa) {
-            return $control;
+            LogService::warning('SOA entry not found for control', [
+                'control_id' => $controlId,
+                'empresa_id' => $this->tenant->getTenant()
+            ]);
+            return null;
         }
 
         return array_merge($control, [
@@ -51,7 +55,35 @@ class ControlRepository extends Repository
     public function evaluarControl(int $soaId, array $data, int $evaluadorId): bool
     {
         return $this->transaction(function() use ($soaId, $data, $evaluadorId) {
-            return $this->soaModel->evaluate($soaId, $data, $evaluadorId);
+            
+            // Validar que SOA existe y pertenece al tenant actual
+            $soa = $this->soaModel->find($soaId);
+            
+            if (!$soa) {
+                LogService::error('SOA not found during evaluation', [
+                    'soa_id' => $soaId,
+                    'empresa_id' => $this->tenant->getTenant()
+                ]);
+                throw new \RuntimeException('Registro SOA no encontrado');
+            }
+
+            // Ejecutar evaluación
+            $result = $this->soaModel->evaluate($soaId, $data, $evaluadorId);
+
+            if ($result) {
+                // Invalidar caché después de evaluación exitosa
+                $this->clearCache();
+                
+                LogService::info('Control evaluated successfully in repository', [
+                    'soa_id' => $soaId,
+                    'control_id' => $soa['control_id'],
+                    'aplicable' => $data['aplicable'],
+                    'estado' => $data['estado'] ?? null,
+                    'evaluador_id' => $evaluadorId
+                ]);
+            }
+
+            return $result;
         });
     }
 
@@ -96,7 +128,7 @@ class ControlRepository extends Repository
 
         return array_map(function($control) {
             return [
-                'id' => $control['id'],
+                'soa_id' => $control['id'],
                 'control_id' => $control['control_id'],
                 'codigo' => $control['codigo'],
                 'nombre' => $control['nombre'],
@@ -120,14 +152,14 @@ class ControlRepository extends Repository
         if (!$aplicable && empty($justificacion)) {
             return [
                 'valid' => false,
-                'error' => 'Se requiere justificación para controles no aplicables'
+                'error' => 'Se requiere justificación para marcar un control como no aplicable'
             ];
         }
 
         if (!$aplicable && strlen($justificacion) < 20) {
             return [
                 'valid' => false,
-                'error' => 'La justificación debe tener al menos 20 caracteres'
+                'error' => 'La justificación debe tener al menos 20 caracteres para ser válida'
             ];
         }
 
@@ -147,7 +179,7 @@ class ControlRepository extends Repository
         if (!in_array($estado, $estadosValidos)) {
             return [
                 'valid' => false,
-                'error' => 'Estado no válido'
+                'error' => 'Estado de implementación no válido. Debe ser: no_implementado, parcial o implementado'
             ];
         }
 
@@ -168,10 +200,10 @@ class ControlRepository extends Repository
             $dominios[] = [
                 'codigo' => $dominio['codigo'],
                 'nombre' => $dominio['nombre'],
-                'total' => $dominio['total'],
-                'aplicables' => $dominio['aplicables'],
-                'implementados' => $dominio['implementados'],
-                'parciales' => $dominio['parciales'],
+                'total' => (int) $dominio['total'],
+                'aplicables' => (int) $dominio['aplicables'],
+                'implementados' => (int) $dominio['implementados'],
+                'parciales' => (int) $dominio['parciales'],
                 'cumplimiento' => $cumplimientoDominio
             ];
         }
